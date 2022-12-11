@@ -1,0 +1,49 @@
+--可用的从者信息
+servant_table = {}
+servant_table[1] = { "炼狱剑士", "4:90 4p:13290" }
+selectedServantIndex=1;
+atk_times=5
+--读取Mumu模拟器相关进程
+openProcess("NemuHeadless.exe")
+--函数：根据输入字符串定位地址
+function MemoryScanner(Bytes)
+    local scanner = createMemScan()
+    scanner.OnlyOneResult = true
+    scanner.firstScan(soExactValue, vtGrouped, rtTruncated, Bytes, "", 0, 0x00000001ffffffff, "", fsmNotAligned, "", true
+        , false, false, false)
+    scanner.waitTillDone()
+    return scanner.getOnlyResult()
+end
+
+--查找指定从者战斗信息
+queryResult = MemoryScanner(string.format(servant_table[selectedServantIndex][2]))
+if queryResult == nil
+then print("未找到正在战斗的" + servant_table[selectedServantIndex][1]+", 修改失败")
+else
+    --查找到的地址即为该从者的唯一战斗信息
+    local onlyAddress = queryResult --Integer形式的首地址
+    local atkAddress = onlyAddress + 0x4    --攻击力偏移地址
+    local hpAddress = onlyAddress + 0x10    --生命值偏移地址
+    local npAddress = onlyAddress + 0x28    --NP值偏移地址
+    --ATK翻atk_times倍
+    writeInteger(atkAddress, readInteger(atkAddress) * atk_times)
+    --NP设置为100%
+    writeInteger(npAddress, 10000)
+    --将相关地址加入列表（攻击力、生命值、NP）
+    local addressList = getAddressList();
+    local atkRecord = addressList.createMemoryRecord();
+    atkRecord.setDescription(servant_table[selectedServantIndex][1]+"攻击力")
+    atkRecord.Address =atkAddress;
+    atkRecord.Active = false;
+    local hpRecord = addressList.createMemoryRecord();
+    hpRecord.setDescription(servant_table[selectedServantIndex][1]+"生命值")
+    hpRecord.Address =hpAddress;
+    hpRecord.Active = true;
+    local npRecord = addressList.createMemoryRecord();
+    npRecord.setDescription(servant_table[selectedServantIndex][1]+"NP值")
+    npRecord.Address =npAddress;
+    npRecord.Active = true;
+
+    print("修改完成")
+    return
+end
